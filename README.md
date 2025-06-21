@@ -42,7 +42,7 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/agopinathan-git/3900-car-self-delivery
+    git clone https://github.com/jlpusher/3900projectRepository
     cd carhub_project_root # Navigate to your project's root directory (where manage.py is)
     ```
 
@@ -100,4 +100,4 @@ Before you begin, ensure you have the following installed:
 ## 📧 Contact
 
 For any questions or inquiries, please contact:
-[Arunjith Gopinathan]
+[Your Name]
