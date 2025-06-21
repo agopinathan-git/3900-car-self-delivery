@@ -1,0 +1,15 @@
+<!-- carhub/templates/carhub/deliveryassignment_list.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Delivery Assignment List</title></head>
+<body>
+<h1>Delivery Assignments</h1>
+<ul>
+  {% for delivery in deliveries %}
+    <li><a href="{% url 'deliveryassignment-detail' delivery.id %}">Assignment #{{ delivery.id }} - {{ delivery.get_status_display }}</a></li>
+  {% empty %}
+    <li>No delivery assignments found.</li>
+  {% endfor %}
+</ul>
+</body>
+</html>

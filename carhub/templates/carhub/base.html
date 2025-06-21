@@ -1,0 +1,117 @@
+{% load static %}
+{% load group_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {# Added for better responsiveness #}
+    <title>{% block title %}Car Self-Delivery{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        .car-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .nav-item {
+            margin-right: 20px;
+        }
+    </style>
+    {% block extra_head %}{% endblock %} {# Placeholder for page-specific head content #}
+</head>
+
+<body>
+{# --- START: Moved messages block inside <body> for correct HTML structure --- #}
+<div class="container mt-3"> {# Added container for messages for consistent padding #}
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+</div>
+{# --- END: Moved messages block --- #}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <div class="container-fluid">
+        <a class="navbar-brand me-4">Car Self-Delivery</a>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav d-flex flex-row">
+                {% if user.is_authenticated %}
+                    {% if user|is_in_groups:"CarhubAdmin,CarhubCustomer,CarhubDeliveryAgent" %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'inventory' %}"><strong>Inventory</strong></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'order-list' %}"><strong>Orders</strong></a></li>
+                    {% endif %}
+
+                    {% if user|is_in_groups:"CarhubAdmin" %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'salesreport-list' %}"><strong>Sales Report</strong></a></li>
+                    {% endif %}
+                {% endif %}
+            </ul>
+        </div>
+
+        {# Changed ml-auto to ms-auto (Bootstrap 5 preference) #}
+        <ul class="nav navbar-nav ms-auto">
+            {% if user.is_authenticated %}
+                <li class="nav-item">
+                    {# Username: Use nav-link class directly on span to get its padding/alignment #}
+                    <span class="nav-link text-light"> {# text-light for dark navbar #}
+                        {% if user.first_name and user.last_name %}
+                            {{ user.first_name }} {{ user.last_name }} ({{ user.username }})
+                        {% elif user.first_name %}
+                            {{ user.first_name }} ({{ user.username }})
+                        {% elif user.last_name %}
+                            {{ user.last_name }} ({{ user.username }})
+                        {% else %}
+                            {{ user.username }}
+                        {% endif %}
+                    </span>
+                </li>
+                <li class="nav-item">
+                    <form action="{% url 'logout' %}" method="post" class="d-inline"> {# d-inline to keep button on same line #}
+                        {% csrf_token %}
+                        {# Logout Button: Use btn-link to make it look like a link, and text-light for color #}
+                        <button type="submit" class="btn btn-link text-light">Log out</button>
+                    </form>
+                </li>
+            {% else %}
+                <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><span
+                        class="glyphicon glyphicon-log-in"></span>Login</a>
+                </li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'register' %}"><span class="glyphicon glyphicon-log-in"></span>Sign
+                    Up</a>
+                </li>
+            {% endif %}
+        </ul>
+
+    </div>
+</nav>
+
+<div class="container mt-4">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.car-select');
+        if (selectAll) {
+            selectAll.addEventListener('change', () => {
+                checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            });
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

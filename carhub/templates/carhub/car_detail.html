@@ -1,0 +1,14 @@
+<!-- carhub/templates/carhub/car_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Car Detail</title></head>
+<body>
+<h1>{{ car.brand }} - {{ car.model }}</h1>
+<p>Price: ${{ car.price }}</p>
+<p>Color: {{ car.color }}</p>
+<p>Condition: {{ car.get_condition_display }}</p>
+<p>Available: {{ car.available }}</p>
+<p>Created at: {{ car.created_at }}</p>
+<a href="{% url 'car-list' %}">Back to list</a>
+</body>
+</html>

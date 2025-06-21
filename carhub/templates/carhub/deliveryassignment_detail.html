@@ -1,0 +1,13 @@
+<!-- carhub/templates/carhub/deliveryassignment_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Delivery Assignment Detail</title></head>
+<body>
+<h1>Delivery Assignment #{{ delivery.id }}</h1>
+<p>Order ID: {{ delivery.order.id }}</p>
+<p>Agent: {{ delivery.agent.username }}</p>
+<p>Status: {{ delivery.get_status_display }}</p>
+<p>Last Updated: {{ delivery.updated_at }}</p>
+<a href="{% url 'deliveryassignment-list' %}">Back to list</a>
+</body>
+</html>

@@ -1,0 +1,115 @@
+{% extends "carhub/base.html" %}
+{% block content %}
+    {% load form_filters %} {# Used for 'add_class' #}
+    {% load static %} {# If you use static files, otherwise can be removed #}
+
+    <h2>Edit Order #{{ order.display_id }}</h2>
+    <p class="subtitle">Update Order Details - Only Status, Delivery Date, and Delivery
+        Address can be updated.</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {# --- Form Errors Display --- #}
+        {% if form.errors %}
+            <div class="alert alert-danger" role="alert">
+                <strong>Please correct the following errors:</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        <li>{{ field|capfirst }}:
+                            <ul>
+                                {% for error in errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-end mt-4">
+            <a href="{% url 'order-detail' pk=order.pk %}" class="btn btn-outline-secondary me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary">Update Order</button>
+        </div>
+
+        {# --- Fields displayed in a Table --- #}
+        <table class="table table-bordered table-striped table-hover mt-3">
+            <tbody>
+            {# Read-only fields #}
+            <tr>
+                <th>Order ID:</th>
+                <td>{{ order.display_id }}</td>
+                {# Using display_id as per previous discussion #}
+            </tr>
+            <tr>
+                <th>Customer:</th>
+                <td>{{ order.customer.username }}</td>
+            </tr>
+            <tr>
+                <th>Car:</th>
+                <td>{{ order.car.brand }} {{ order.car.model }} ({{ order.car.year }})</td>
+            </tr>
+            <tr>
+                <th>Created At:</th>
+                <td>{{ order.created_at|date:'M d, Y H:i' }}</td>
+            </tr>
+
+            {# A horizontal rule can be represented by a row or simply removed if table borders suffice #}
+            {# <tr><td colspan="2"><hr class="my-0"></td></tr> #}
+
+            {# Editable Fields (from the form) #}
+            <tr>
+                <th><label for="{{ form.delivery_address.id_for_label }}" class="form-label mb-0">Delivery
+                    Address:</label></th>
+                <td>
+                    {{ form.delivery_address|add_class:"form-control" }}
+                    {% if form.delivery_address.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.delivery_address.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th><label for="{{ form.phone_number.id_for_label }}" class="form-label mb-0">Phone
+                    Number:</label></th>
+                <td>
+                    {{ form.phone_number|add_class:"form-control" }} {# Ensure add_class is applied #}
+                    {% if form.phone_number.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.phone_number.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th><label for="{{ form.status.id_for_label }}" class="form-label mb-0">Order
+                    Status:</label></th>
+                <td>
+                    {{ form.status|add_class:"form-select" }} {# Use form-select for dropdown #}
+                    {% if form.status.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.status.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th><label for="{{ form.delivery_date.id_for_label }}" class="form-label mb-0">Delivery
+                    Date:</label></th>
+                <td>
+                    {{ form.delivery_date|add_class:"form-control" }} {# Use form-control for date input #}
+                    {% if form.delivery_date.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.delivery_date.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        {# End table-responsive #}
+
+    </form>
+{% endblock %}

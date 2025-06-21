@@ -1,0 +1,12 @@
+{% extends "carhub/base.html" %}
+{% block content %}
+<div class="container text-center mt-5">
+  <h2>Welcome to the Car Self-Delivery System</h2>
+  <p class="lead mt-4">
+    Experience a modern, contactless way to purchase and receive your vehicle.
+    This platform simplifies the entire process — from browsing to ordering —
+    enabling you to shop for cars online and have them delivered directly to your doorstep.
+  </p>
+  <a href="{% url 'login' %}" class="btn btn-primary mt-4">🔐 Please log in to explore available vehicles, place orders, and track deliveries.</a>
+</div>
+{% endblock %}

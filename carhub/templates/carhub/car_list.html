@@ -1,0 +1,15 @@
+<!-- carhub/templates/carhub/car_list.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Car List</title></head>
+<body>
+<h1>Cars</h1>
+<ul>
+  {% for car in cars %}
+    <li><a href="{% url 'car-detail' car.id %}">{{ car.brand }} {{ car.model }} ({{ car.color }}) - ${{ car.price }}</a></li>
+  {% empty %}
+    <li>No cars found.</li>
+  {% endfor %}
+</ul>
+</body>
+</html>

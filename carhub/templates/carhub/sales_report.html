@@ -1,0 +1,43 @@
+{% extends 'carhub/base.html' %}
+
+{% block title %}Sales Report{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <h1 class="text-3xl font-bold mb-4">Sales Report</h1>
+
+    <div class="flex justify-end mb-4">
+      <a href="{% url 'export-sales-csv' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Export to CSV
+      </a>
+    </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-white border border-gray-200 shadow-md rounded">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="px-4 py-2 border">#</th>
+          <th class="px-4 py-2 border">Car</th>
+          <th class="px-4 py-2 border">Order ID</th>
+          <th class="px-4 py-2 border">Sale Price</th>
+          <th class="px-4 py-2 border">Sold On</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in sales_reports %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2 border">{{ forloop.counter }}</td>
+          <td class="px-4 py-2 border">{{ sale.car.brand }} {{ sale.car.model }}</td>
+          <td class="px-4 py-2 border">{{ sale.order.id }}</td>
+          <td class="px-4 py-2 border">${{ sale.sale_price }}</td>
+          <td class="px-4 py-2 border">{{ sale.sold_on|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-4 text-gray-500">No sales records available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

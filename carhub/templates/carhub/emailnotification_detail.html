@@ -1,0 +1,12 @@
+<!-- carhub/templates/carhub/emailnotification_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Email Notification Detail</title></head>
+<body>
+<h1>Notification: {{ notification.subject }}</h1>
+<p>User: {{ notification.user.username }}</p>
+<p>Sent at: {{ notification.sent_at }}</p>
+<p>Type: {{ notification.get_notification_type_display }}</p>
+<a href="{% url 'emailnotification-list' %}">Back to list</a>
+</body>
+</html>

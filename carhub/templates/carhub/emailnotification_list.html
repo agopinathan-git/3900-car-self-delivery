@@ -1,0 +1,15 @@
+<!-- carhub/templates/carhub/emailnotification_list.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Email Notification List</title></head>
+<body>
+<h1>Email Notifications</h1>
+<ul>
+  {% for notification in notifications %}
+    <li><a href="{% url 'emailnotification-detail' notification.id %}">{{ notification.subject }} ({{ notification.get_notification_type_display }})</a></li>
+  {% empty %}
+    <li>No notifications found.</li>
+  {% endfor %}
+</ul>
+</body>
+</html>

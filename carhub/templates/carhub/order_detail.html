@@ -1,0 +1,79 @@
+{% extends "carhub/base.html" %}
+{% block content %}
+    <h2>Order Details #{{ order.display_id }}</h2>
+    <p class="subtitle">Order Confirmed: Get ready to drive your dream car!</p>
+
+    <div class="d-flex justify-content-end mt-4">
+        <a href="{% url 'order-list' %}" class="btn btn-outline-secondary me-2">Back to Orders</a>
+
+        {% if can_edit_order %}
+            {# This permission check is usually defined in your OrderUpdateView's dispatch method or context #}
+            <a href="{% url 'order-update' pk=order.pk %}" class="btn btn-primary me-2">Edit Order</a>
+        {% endif %}
+
+        {% if can_assign_agent %}
+            {% if order.status == 'PENDING' and not order.is_assigned %}
+                <a href="{% url 'assign-delivery-agent' pk=order.pk %}" class="btn btn-success">Assign Delivery
+                    Agent</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <table class="table table-bordered table-striped table-hover mt-3">
+        <tbody>
+        <tr>
+            <th>Order ID:</th>
+            <td>{{ order.display_id }}</td>
+        </tr>
+        <tr>
+            <th>Customer:</th>
+            <td>{{ order.customer.username }}</td>
+        </tr>
+        <tr>
+            <th>Car:</th>
+            <td>{{ order.car.brand }} {{ order.car.model }}</td>
+        </tr>
+        <tr>
+            <th>Car Price:</th>
+            <td>${{ order.car.price|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <th>Status:</th>
+            <td>{{ order.get_status_display|default:"Unknown Status" }}</td>
+        </tr>
+        <tr>
+            <th>Delivery Address:</th>
+            <td>{{ order.delivery_address|linebreaksbr }}</td>
+        </tr>
+        <tr>
+            <th>Phone Number:</th>
+            <td>{{ order.phone_number|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <th>Delivery Date:</th>
+            <td>{{ order.delivery_date|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <th>Created At:</th>
+            <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
+        </tr>
+        {# Display Updated At #}
+        <tr>
+            <th>Last Updated:</th>
+            <td>{{ order.updated_at|date:"M d, Y H:i" }}</td>
+        </tr>
+
+        {% if order.is_assigned %}
+            <tr>
+                <th>Assigned Agent:</th>
+                <td>{{ order.deliveryassignment.agent.username }}</td>
+            </tr>
+            <tr>
+                <th>Assigned On:</th>
+                <td>{{ order.deliveryassignment.assigned_at|date:"M d, Y H:i" }}</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "carhub/base.html" %}
+{% load static %}
+{% load group_filters %}
+
+{% block content %}
+<h2>Available Inventory</h2>
+<p class="subtitle">Complete your purchase online in minutes!</p>
+
+<!-- Filter (Admins & Agents) -->
+{% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+<form method="get" class="mb-3 d-flex align-items-center">
+    <label for="filter" class="me-2 fw-bold">Show:</label>
+    <select name="filter" id="filter" class="form-select w-auto" onchange="this.form.submit()">
+        <option value="available" {% if request.GET.filter == "available" or not request.GET.filter %}selected{% endif %}>Available</option>
+        <option value="unavailable" {% if request.GET.filter == "unavailable" %}selected{% endif %}>Unavailable</option>
+        <option value="all" {% if request.GET.filter == "all" %}selected{% endif %}>All</option>
+    </select>
+</form>
+{% endif %}
+
+<form method="POST" id="car-actions-form" onsubmit="return validateSelectedCars()">
+    {% csrf_token %}
+<!--Roshni-->
+{#<form method="GET" action="{% url 'order-submit-generic' %}">#}
+{#    {% csrf_token %}#}
+
+   <!--End Roshni-->
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end mt-3">
+
+        {# Add Car button for CarhubAdmin and CarhubDeliveryAgent #}
+        {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+            <a href="{% url 'car-create' %}" class="btn btn-primary me-2">Add Car</a>
+        {% endif %}
+
+        {# Mark Unavailable button for CarhubAdmin and CarhubDeliveryAgent #}
+        {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+                <button type="submit" name="action" value="mark_unavailable" class="btn btn-warning me-2">Remove from Inventory</button>
+        {% endif %}
+
+        {# Order Cars button for CarhubAdmin and CarhubCustomer #}
+        {% if user|is_in_groups:"CarhubAdmin,CarhubCustomer" %}
+                <button type="submit" name="action" value="order_initiate" class="btn btn-success">Order Selected Cars</button>
+        {% endif %}
+
+    </div>
+
+    <table class="table table-bordered table-striped table-hover mt-3">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th></th>
+                {# Edit button for Admin only #}
+                {% if user|is_in_groups:"CarhubAdmin" %}
+                <th>Edit</th>
+                {% endif %}
+                <th>Brand</th>
+                <th>Model</th>
+                <th>Price</th>
+                <th>Color</th>
+                <th>Condition</th>
+                <th>Available</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for car in cars %}
+                <tr>
+                    {# Checkbox with name="selected_cars" and value="{{ car.id }}" #}
+                    <td><input type="checkbox" class="car-select" name="selected_cars" value="{{ car.id }}"></td>
+                    <td><img src="https://img.icons8.com/ios-filled/50/000000/car.png" class="car-icon" alt="Car Logo"></td>
+                    {# Edit button for Admin only #}
+                    {% if user|is_in_groups:"CarhubAdmin" %}
+                        <td><a href="{% url 'car-update' car.id %}" class="btn btn-sm btn-primary">Edit</a></td>
+                    {% endif %}
+                    <td>{{ car.brand }}</td>
+                    <td>{{ car.get_model_display }}</td>
+                    <td>{{ car.formatted_price }}</td>
+                    <td>{{ car.color }}</td>
+                    <td>{{ car.get_condition_display }}</td>
+                    <td>{{ car.available|yesno:"Yes,No" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="9">No cars available at the moment.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.car-select');
+
+        // Event listener for "Select All" checkbox
+        if (selectAll) { // Ensure selectAll exists before adding listener
+            selectAll.addEventListener('change', () => {
+                checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            });
+        }
+    });
+
+    // Renamed and simplified: This function now only validates and prevents submission
+    // if no cars are selected. The form will naturally submit the checkbox values.
+    function validateSelectedCars() {
+        const selected = document.querySelectorAll('.car-select:checked');
+        if (selected.length === 0) {
+            alert("Please select at least one car.");
+            return false; // Prevent form submission
+        }
+        return true; // Allow form submission
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{# carhub/assign_delivery_agent.html #}
+{% extends "carhub/base.html" %}
+{% block content %}
+    <h2>Assign Agent to Order #{{ order.display_id }}</h2>
+    <p class="subtitle">Order Status: {{ order.get_status_display }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.errors %}
+            <div class="alert alert-danger" role="alert">
+                <strong>Please correct the following errors:</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        <li>{{ field|capfirst }}:
+                            <ul>
+                                {% for error in errors %}{{ error }}{% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                    {% if form.non_field_errors %}
+                        <li>{{ form.non_field_errors }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-end mt-4">
+            <a href="{% url 'order-detail' pk=order.pk %}" class="btn btn-outline-secondary me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary">Assign Agent</button>
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.agent.id_for_label }}" class="me-2 fw-bold">{{ form.agent.label }}</label>
+            {{ form.agent }}
+            {% if form.agent.errors %}
+                <div class="text-danger small mt-1">
+                    {% for error in form.agent.errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+            {% if form.agent.help_text %}
+                <small class="form-text text-muted">{{ form.agent.help_text }}</small>
+            {% endif %}
+        </div>
+
+    </form>
+{% endblock %}

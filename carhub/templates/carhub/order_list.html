@@ -1,0 +1,147 @@
+{% extends "carhub/base.html" %}
+{% load group_filters %}
+
+{% block content %}
+    <h2>Order Summary</h2>
+    <p class="subtitle">Review and Complete Your Order!</p>
+
+    <form method="get" class="mb-4"> {# Added mb-4 for spacing #}
+        <div class="row g-3 align-items-end"> {# Use Bootstrap row/col for better filter layout #}
+            {% if not user|is_in_groups:"CarhubCustomer" %}
+                <div class="col-md-auto">
+                    <label for="statusSelect" class="me-2 fw-bold">Status:</label>
+                    <select name="status" id="statusSelect" class="form-select">
+                        <option value="">All</option>
+                        {# Use Order.Status choices for consistency with model #}
+                        <option value="PENDING" {% if request.GET.status == 'PENDING' %}selected{% endif %}>
+                            Pending
+                        </option>
+                        <option value="PROCESSING"
+                                {% if request.GET.status == 'PROCESSING' %}selected{% endif %}>Processing
+                        </option>
+                        <option value="SHIPPED" {% if request.GET.status == 'SHIPPED' %}selected{% endif %}>
+                            Shipped
+                        </option>
+                        <option value="DELIVERED" {% if request.GET.status == 'DELIVERED' %}selected{% endif %}>
+                            Delivered
+                        </option>
+                        <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>
+                            Cancelled
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-md-auto">
+                    <label for="userSearch" class="me-2 fw-bold">Customer Username/Email:</label>
+                    <input type="text" name="user" id="userSearch" value="{{ request.GET.user }}"
+                           class="form-control" placeholder="Enter username or email">
+                </div>
+
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    {# Use primary button for action #}
+                    {% if request.GET.status or request.GET.user %}
+                        <a href="{% url 'order-list' %}" class="btn btn-outline-secondary ms-2">Clear
+                            Filters</a> {# Button to clear filters #}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="table-responsive"> {# Makes table scrollable on small screens #}
+        <table class="table table-bordered table-striped table-hover mt-3">
+            {# Added table-striped for readability #}
+            <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Car</th>
+                <th>Status</th>
+                <th>Delivery Address</th>
+                <th>Delivery Date</th>
+                <th>Created At</th>
+                <th>Details</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for order in orders %}
+                <tr>
+                    <td>{{ order.display_id }}</td>
+                    <td>{{ order.customer.username }}</td>
+                    <td>{{ order.car.brand }} {{ order.car.model }}</td>
+                    <td><strong>{{ order.get_status_display }}</strong></td>
+                    <td>{{ order.delivery_address|truncatechars:30 }}</td>
+                    {# Truncate long addresses #}
+                    <td>{{ order.delivery_date|default:"N/A" }}</td>
+                    <td>{{ order.created_at|date:"M d, Y" }}</td>
+                    {# Formatted date #}
+                    <td><a href="{% url 'order-detail' order.id %}" class="btn btn-sm btn-info">View</a></td>
+                    {# Bootstrap button for action #}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-4">No orders found matching your criteria.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {# End table-responsive #}
+
+    {# Pagination links - Styled with Bootstrap #}
+    {% if is_paginated %}
+        <nav aria-label="Order list pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if orders.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}page=1"
+                           aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}page={{ orders.previous_page_number }}"
+                           aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for i in orders.paginator.page_range %}
+                    {% if orders.number == i %}
+                        <li class="page-item active" aria-current="page"><span class="page-link">{{ i }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="?{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}page={{ i }}">{{ i }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if orders.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}page={{ orders.next_page_number }}"
+                           aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.user %}user={{ request.GET.user }}&{% endif %}page={{ orders.paginator.num_pages }}"
+                           aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% else %}
+        <p class="text-muted text-center mt-4">No more orders to display.</p>
+    {% endif %} {# End of is_paginated if block #}
+
+{% endblock %}
