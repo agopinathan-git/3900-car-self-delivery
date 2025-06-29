@@ -1,0 +1,13 @@
+<!-- carhub/templates/carhub/salesreport_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Sales Report Detail</title></head>
+<body>
+<h1>Sales Report #{{ salesreport.id }}</h1>
+<p>Car: {{ salesreport.car.brand }} {{ salesreport.car.model }}</p>
+<p>Order ID: {{ salesreport.order.id }}</p>
+<p>Sale Price: ${{ salesreport.sale_price }}</p>
+<p>Sold On: {{ salesreport.sold_on }}</p>
+<a href="{% url 'salesreport-list' %}">Back to list</a>
+</body>
+</html>

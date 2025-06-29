@@ -1,0 +1,13 @@
+<!-- carhub/templates/carhub/user_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head><title>User Detail</title></head>
+<body>
+<h1>User: {{ user.username }}</h1>
+<p>Email: {{ user.email }}</p>
+<p>Role: {{ user.get_role_display }}</p>
+<p>Created at: {{ user.created_at }}</p>
+<p>Active: {{ user.is_active }}</p>
+<a href="{% url 'user-list' %}">Back to list</a>
+</body>
+</html>

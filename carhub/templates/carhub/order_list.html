@@ -69,7 +69,7 @@
                 <tr>
                     <td>{{ order.display_id }}</td>
                     <td>{{ order.customer.username }}</td>
-                    <td>{{ order.car.brand }} {{ order.car.model }}</td>
+                    <td>{{ order.car.brand }} {{ order.car.get_model_display }}</td>
                     <td><strong>{{ order.get_status_display }}</strong></td>
                     <td>{{ order.delivery_address|truncatechars:30 }}</td>
                     {# Truncate long addresses #}

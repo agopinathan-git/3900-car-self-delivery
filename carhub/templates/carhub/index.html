@@ -3,56 +3,61 @@
 {% load group_filters %}
 
 {% block content %}
-<h2>Available Inventory</h2>
-<p class="subtitle">Complete your purchase online in minutes!</p>
 
-<!-- Filter (Admins & Agents) -->
-{% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
-<form method="get" class="mb-3 d-flex align-items-center">
-    <label for="filter" class="me-2 fw-bold">Show:</label>
-    <select name="filter" id="filter" class="form-select w-auto" onchange="this.form.submit()">
-        <option value="available" {% if request.GET.filter == "available" or not request.GET.filter %}selected{% endif %}>Available</option>
-        <option value="unavailable" {% if request.GET.filter == "unavailable" %}selected{% endif %}>Unavailable</option>
-        <option value="all" {% if request.GET.filter == "all" %}selected{% endif %}>All</option>
-    </select>
-</form>
-{% endif %}
+    <h2>Available Inventory</h2>
+    <p class="subtitle">Complete your purchase online in minutes!</p>
 
-<form method="POST" id="car-actions-form" onsubmit="return validateSelectedCars()">
-    {% csrf_token %}
-<!--Roshni-->
-{#<form method="GET" action="{% url 'order-submit-generic' %}">#}
-{#    {% csrf_token %}#}
+    <!-- Filter (Admins & Agents) -->
+    {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+        <form method="get" class="mb-3 d-flex align-items-center">
+            <label for="filter" class="me-2 fw-bold">Show:</label>
+            <select name="filter" id="filter" class="form-select w-auto" onchange="this.form.submit()">
+                <option value="available"
+                        {% if request.GET.filter == "available" or not request.GET.filter %}selected{% endif %}>
+                    Available
+                </option>
+                <option value="unavailable" {% if request.GET.filter == "unavailable" %}selected{% endif %}>
+                    Unavailable
+                </option>
+                <option value="all" {% if request.GET.filter == "all" %}selected{% endif %}>All</option>
+            </select>
+        </form>
+    {% endif %}
 
-   <!--End Roshni-->
-    <!-- Action Buttons -->
-    <div class="d-flex justify-content-end mt-3">
+    <form method="POST" id="car-actions-form" onsubmit="return validateSelectedCars()">
+        {% csrf_token %}
 
-        {# Add Car button for CarhubAdmin and CarhubDeliveryAgent #}
-        {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
-            <a href="{% url 'car-create' %}" class="btn btn-primary me-2">Add Car</a>
-        {% endif %}
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-end mt-3">
 
-        {# Mark Unavailable button for CarhubAdmin and CarhubDeliveryAgent #}
-        {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
-                <button type="submit" name="action" value="mark_unavailable" class="btn btn-warning me-2">Remove from Inventory</button>
-        {% endif %}
+            {# Add Car button for CarhubAdmin and CarhubDeliveryAgent #}
+            {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+                <a href="{% url 'car-create' %}" class="btn btn-primary me-2">Add Car</a>
+            {% endif %}
 
-        {# Order Cars button for CarhubAdmin and CarhubCustomer #}
-        {% if user|is_in_groups:"CarhubAdmin,CarhubCustomer" %}
-                <button type="submit" name="action" value="order_initiate" class="btn btn-success">Order Selected Cars</button>
-        {% endif %}
+            {# Mark Unavailable button for CarhubAdmin and CarhubDeliveryAgent #}
+            {% if user|is_in_groups:"CarhubAdmin,CarhubDeliveryAgent" %}
+                <button type="submit" name="action" value="mark_unavailable" class="btn btn-warning me-2">Remove from
+                    Inventory
+                </button>
+            {% endif %}
 
-    </div>
+            {# Order Cars button for CarhubAdmin and CarhubCustomer #}
+            {% if user|is_in_groups:"CarhubAdmin,CarhubCustomer" %}
+                <button type="submit" name="action" value="order_initiate" class="btn btn-success">Order Selected Cars
+                </button>
+            {% endif %}
 
-    <table class="table table-bordered table-striped table-hover mt-3">
-        <thead>
+        </div>
+
+        <table class="table table-bordered table-striped table-hover mt-3">
+            <thead>
             <tr>
-                <th><input type="checkbox" id="selectAll"></th>
+                <th><label for="selectAll"></label><input type="checkbox" id="selectAll"></th>
                 <th></th>
                 {# Edit button for Admin only #}
                 {% if user|is_in_groups:"CarhubAdmin" %}
-                <th>Edit</th>
+                    <th>Edit</th>
                 {% endif %}
                 <th>Brand</th>
                 <th>Model</th>
@@ -61,13 +66,16 @@
                 <th>Condition</th>
                 <th>Available</th>
             </tr>
-        </thead>
-        <tbody>
+            </thead>
+            <tbody>
             {% for car in cars %}
                 <tr>
                     {# Checkbox with name="selected_cars" and value="{{ car.id }}" #}
-                    <td><input type="checkbox" class="car-select" name="selected_cars" value="{{ car.id }}"></td>
-                    <td><img src="https://img.icons8.com/ios-filled/50/000000/car.png" class="car-icon" alt="Car Logo"></td>
+                    <td><label>
+                        <input type="checkbox" class="car-select" name="selected_cars" value="{{ car.id }}">
+                    </label></td>
+                    <td><img src="https://img.icons8.com/ios-filled/50/000000/car.png" class="car-icon" alt="Car Logo">
+                    </td>
                     {# Edit button for Admin only #}
                     {% if user|is_in_groups:"CarhubAdmin" %}
                         <td><a href="{% url 'car-update' car.id %}" class="btn btn-sm btn-primary">Edit</a></td>
@@ -84,32 +92,97 @@
                     <td colspan="9">No cars available at the moment.</td>
                 </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</form>
+            </tbody>
+        </table>
+    </form>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const selectAll = document.getElementById('selectAll');
-        const checkboxes = document.querySelectorAll('.car-select');
+    {% if is_paginated %}
 
-        // Event listener for "Select All" checkbox
-        if (selectAll) { // Ensure selectAll exists before adding listener
-            selectAll.addEventListener('change', () => {
-                checkboxes.forEach(cb => cb.checked = selectAll.checked);
-            });
+        {# Display total number of cars #}
+        <p class="mb-3">Total Cars: <strong>{{ page_obj.paginator.count }}</strong>
+        | Page [ <strong>{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</strong> ]
+        </p>
+
+        <nav aria-label="Page navigation" class="mt-2">
+            <ul class="pagination justify-content-center">
+                {# Previous Page Button #}
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        {% with request.GET.filter as current_filter %}
+                            <a class="page-link"
+                               href="?page=
+
+                                       {{ page_obj.previous_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}"
+                               aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span> Previous
+                            </a>
+                        {% endwith %}
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo; Previous</span>
+                    </li>
+                {% endif %}
+
+                {# Page Numbers #}
+                {% for i in page_obj.paginator.page_range %}
+                    {% with request.GET.filter as current_filter %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ i }}</span>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link"
+                                   href="?page={{ i }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">
+                                    {{ i }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endwith %}
+                {% endfor %}
+
+                {# Next Page Button #}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        {% with request.GET.filter as current_filter %}
+                            <a class="page-link" href="?page= {{ page_obj.next_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}"
+                               aria-label="Next">
+                                Next <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        {% endwith %}
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next &raquo;</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.car-select');
+
+            // Event listener for "Select All" checkbox
+            if (selectAll) { // Ensure selectAll exists before adding listener
+                selectAll.addEventListener('change', () => {
+                    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+                });
+            }
+        });
+
+        // Renamed and simplified: This function now only validates and prevents submission
+        // if no cars are selected. The form will naturally submit the checkbox values.
+        function validateSelectedCars() {
+            const selected = document.querySelectorAll('.car-select:checked');
+            if (selected.length === 0) {
+                alert("Please select at least one car.");
+                return false; // Prevent form submission
+            }
+            return true; // Allow form submission
         }
-    });
-
-    // Renamed and simplified: This function now only validates and prevents submission
-    // if no cars are selected. The form will naturally submit the checkbox values.
-    function validateSelectedCars() {
-        const selected = document.querySelectorAll('.car-select:checked');
-        if (selected.length === 0) {
-            alert("Please select at least one car.");
-            return false; // Prevent form submission
-        }
-        return true; // Allow form submission
-    }
-</script>
+    </script>
 {% endblock %}

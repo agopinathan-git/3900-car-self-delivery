@@ -1,6 +1,7 @@
 # carhub/views.py
 
 import csv
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
@@ -10,10 +11,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Group  # Import Group for permission checks
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Q  # Ensure Q is imported if you use it in get_queryset
+from django.db.models import Q, Sum  # Ensure Q is imported if you use it in get_queryset
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
-from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
@@ -22,7 +22,8 @@ from django.views.generic import ListView
 from .forms import OrderDetailsForm, CarForm, DeliveryAssignmentForm
 from .forms import OrderSubmissionForm
 from .forms import OrderUpdateForm
-from .models import Car, Order, DeliveryAssignment, EmailNotification, SalesReport
+from .models import Car
+from .models import Order, DeliveryAssignment, EmailNotification, SalesReport
 
 
 # Roshni
@@ -159,7 +160,7 @@ class CarListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListView):
     model = Car
     template_name = 'carhub/index.html'
     context_object_name = 'cars'
-    paginate_by = 10
+    paginate_by = 20
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -251,19 +252,131 @@ class CarCreateView(LoginRequiredMixin, UserPassesTestMixin, generic.CreateView)
         return user.groups.filter(name__in=['CarhubAdmin', 'CarhubDeliveryAgent']).exists()
 
     def handle_no_permission(self):
-        messages.error(self.request, "You do not have permission to add cars.")
+        messages.error(self.request, "You do not have permission to add/edit cars.")
         return redirect(reverse_lazy('inventory'))
 
-    def get_context_data(self, **kwargs):
-        """Adds a 'title' variable to the template context."""
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Add Car' # Title for the creation page
-        return context
+    # This post method handles both single form submission and CSV upload
+    def post(self, request, *args, **kwargs):
+        if 'bulk_upload_submit' in request.POST and 'csv_file' in request.FILES:
+            return self.handle_csv_upload(request)
+        else:
+            # If it's not a bulk upload, it's a single car form submission
+            return super().post(request, *args, **kwargs)
 
+    def handle_csv_upload(self, request):
+        csv_file = request.FILES['csv_file']
+
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'The uploaded file is not a CSV file.')
+            return redirect('car-create')
+
+        if csv_file.size > 5 * 1024 * 1024:  # 5MB limit
+            messages.error(request, 'The CSV file is too large (max 5MB).')
+            return redirect('car-create')
+
+        decoded_file = csv_file.read().decode('utf-8').splitlines()
+        reader = csv.DictReader(decoded_file)
+
+        cars_to_create = []
+        errors = []
+        line_num = 1  # Start from 1 for header, increment for each row
+
+        # Define expected headers based on your model's current fields
+        expected_headers = ['brand', 'model_type', 'price', 'color', 'condition', 'available']
+
+        # Check if all expected headers are present
+        if not all(header in reader.fieldnames for header in expected_headers):
+            missing_headers = [h for h in expected_headers if h not in reader.fieldnames]
+            messages.error(request,
+                           f"CSV headers are incorrect or missing. Expected: {', '.join(expected_headers)}. Missing: {', '.join(missing_headers)}")
+            return redirect('car-create')
+
+        # Get display values for choices to validate against
+        # (value_in_model, display_value_for_csv)
+        model_type_map = {display.upper(): value for value, display in Car.CAR_MODEL_CHOICES}
+        condition_map = {display.upper(): value for value, display in Car.CONDITION_CHOICES}
+
+        for row in reader:
+            line_num += 1
+            try:
+                brand = row.get('brand', '').strip()
+                # Convert CSV 'model_type' display value to model's internal value
+                model_type = model_type_map.get(row.get('model_type', '').strip().upper())
+                price_str = row.get('price', '0.00').strip()
+                color = row.get('color', '').strip()
+                # Convert CSV 'condition' display value to model's internal value
+                condition = condition_map.get(row.get('condition', '').strip().upper())
+                available_str = row.get('available', '').strip().lower()
+
+                # Basic validation for mandatory fields
+                if not all([brand, model_type, price_str, color, condition, available_str is not None]):
+                    raise ValueError("Missing or invalid mandatory field(s).")
+
+                # Validate model_type against choices
+                if model_type not in [val for val, _ in Car.CAR_MODEL_CHOICES]:
+                    raise ValueError(
+                        f"Invalid model_type: '{row.get('model_type')}'. Expected one of: {', '.join([d for v, d in Car.CAR_MODEL_CHOICES])}.")
+
+                # Validate condition against choices
+                if condition not in [val for val, _ in Car.CONDITION_CHOICES]:
+                    raise ValueError(
+                        f"Invalid condition: '{row.get('condition')}'. Expected one of: {', '.join([d for v, d in Car.CONDITION_CHOICES])}.")
+
+                try:
+                    price = Decimal(price_str)
+                    if price < 0:
+                        raise ValueError("Price cannot be negative.")
+                except Exception:
+                    raise ValueError(f"Invalid price format: '{price_str}'. Must be a number.")
+
+                available = None
+                if available_str == 'true':
+                    available = True
+                elif available_str == 'false':
+                    available = False
+                else:
+                    raise ValueError(f"Invalid available value: '{available_str}'. Must be 'True' or 'False'.")
+
+                cars_to_create.append(
+                    Car(
+                        brand=brand,
+                        model=model_type,  # Use the internal value
+                        price=price,
+                        color=color,
+                        condition=condition,  # Use the internal value
+                        available=available,
+                    )
+                )
+
+            except ValueError as ve:
+                errors.append(f"Row {line_num}: {ve}")
+            except Exception as e:
+                errors.append(f"Row {line_num}: An unexpected error occurred - {e}")
+
+        if errors:
+            for error_msg in errors:
+                messages.error(request, error_msg)
+            messages.warning(request, f"Some cars could not be uploaded. Please correct errors and try again.")
+            return redirect('car-create')
+
+        if not cars_to_create:
+            messages.warning(request, "No valid cars found in the CSV file to upload.")
+            return redirect('car-create')
+
+        try:
+            with transaction.atomic():
+                Car.objects.bulk_create(cars_to_create)
+            messages.success(request, f"Successfully uploaded {len(cars_to_create)} car(s) from CSV.")
+        except Exception as e:
+            messages.error(request, f"Database error during bulk upload: {e}")
+            messages.error(request, "No cars were added due to a database error.")
+
+        return redirect('inventory') # <-- Redirect after successful CSV upload
 
     def form_valid(self, form):
         messages.success(self.request, f"Car {form.instance.brand} {form.instance.model} added successfully!")
         return super().form_valid(form)
+
 
 class CarUpdateView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateView):
     """
@@ -272,7 +385,7 @@ class CarUpdateView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateView)
     model = Car
     form_class = CarForm
     template_name = 'carhub/car_form.html'
-    context_object_name = 'car' # The object will be available as 'car' in the template
+    context_object_name = 'car'  # The object will be available as 'car' in the template
 
     def test_func(self):
         user = self.request.user
@@ -285,12 +398,12 @@ class CarUpdateView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateView)
     def get_context_data(self, **kwargs):
         """Adds a 'title' variable to the template context."""
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Edit Car' # Title for the update page
+        context['title'] = 'Edit Car'  # Title for the update page
         return context
 
     def get_success_url(self):
         messages.success(self.request, f"Car {self.object.brand} {self.object.model} updated successfully!")
-        return reverse_lazy('inventory') # Redirect after successful update
+        return reverse_lazy('inventory')  # Redirect after successful update
 
 
 # --- Order Views ---
@@ -298,7 +411,7 @@ class OrderListView(LoginRequiredMixin, ListView):
     model = Order
     template_name = 'carhub/order_list.html'
     context_object_name = 'orders'
-    paginate_by = 10 # Adjust your pagination size if needed
+    paginate_by = 25  # Adjust your pagination size if needed
 
     def get_queryset(self):
         # Start with the base queryset, ordered by creation date (newest first)
@@ -306,7 +419,7 @@ class OrderListView(LoginRequiredMixin, ListView):
 
         # Get filter parameters from the request
         status = self.request.GET.get('status')
-        user_query = self.request.GET.get('user') # This is the filter causing the issue
+        user_query = self.request.GET.get('user')  # This is the filter causing the issue
 
         # Apply status filter if present
         if status:
@@ -339,7 +452,7 @@ class OrderListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(deliveryassignment__agent=user).distinct()
         else:
             # Users not in any specific role (or guest users) should see no orders by default
-            queryset = Order.objects.none() # Return an empty queryset
+            queryset = Order.objects.none()  # Return an empty queryset
 
         return queryset
 
@@ -506,15 +619,16 @@ def order_submit(request):
                     # --- NEW LOGIC: Create SalesReport record ---
                     try:
                         SalesReport.objects.create(
-                            car=car,          # The car associated with this order
-                            order=order,      # The newly created order
-                            sale_price=car.price, # Assuming your Car model has a 'price' field
-                            sold_on=order.created_at # Use the order's creation timestamp as the sale date
+                            car=car,  # The car associated with this order
+                            order=order,  # The newly created order
+                            sale_price=car.price,  # Assuming your Car model has a 'price' field
+                            sold_on=order.created_at  # Use the order's creation timestamp as the sale date
                         )
                     except Exception as e:
                         # Log this error (in a real app, use Django's logging module)
                         print(f"WARNING: Could not create SalesReport for Order {order.id}: {e}")
-                        messages.warning(request, f"Order {str(order.id)[:8]} placed, but sale report creation failed. Admin might need to review.")
+                        messages.warning(request,
+                                         f"Order {str(order.id)[:8]} placed, but sale report creation failed. Admin might need to review.")
                     # --- END NEW LOGIC ---
 
                     # Customer EmailNotification
@@ -625,7 +739,6 @@ class OrderUpdateView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateVie
     # Removed the incorrect id_short_version helper from here, as it's not used and caused confusion.
 
 
-
 # --- Delivery Assignment Views ---
 class DeliveryAssignmentListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListView):
     """
@@ -634,7 +747,7 @@ class DeliveryAssignmentListView(LoginRequiredMixin, UserPassesTestMixin, generi
     model = DeliveryAssignment
     template_name = 'carhub/deliveryassignment_list.html'
     context_object_name = 'deliveries'
-    paginate_by = 10
+    paginate_by = 25
 
     def get_queryset(self):
         user = self.request.user
@@ -680,7 +793,6 @@ class DeliveryAssignmentDetailView(LoginRequiredMixin, UserPassesTestMixin, gene
         return redirect('deliveryassignment-list')
 
 
-
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.groups.filter(name='CarhubAdmin').exists())
 def assign_delivery_agent(request, pk):
@@ -694,9 +806,9 @@ def assign_delivery_agent(request, pk):
     # Check if an active assignment already exists for this order
     # order.is_assigned property correctly handles this
     if order.is_assigned:
-        messages.info(request, f"Order #{str(order.id)[:8]} is already assigned to {order.deliveryassignment.agent.username}.")
+        messages.info(request,
+                      f"Order #{str(order.id)[:8]} is already assigned to {order.deliveryassignment.agent.username}.")
         return redirect('order-detail', pk=order.pk)
-
 
     if request.method == 'POST':
         form = DeliveryAssignmentForm(request.POST)
@@ -708,7 +820,7 @@ def assign_delivery_agent(request, pk):
                 assignment = DeliveryAssignment.objects.create(
                     order=order,
                     agent=agent,
-                    status='a' # <<< IMPORTANT: Use 'a' to match your STATUS_CHOICES
+                    status='a'  # <<< IMPORTANT: Use 'a' to match your STATUS_CHOICES
                 )
 
                 # Update the Order status to PROCESSING
@@ -742,14 +854,15 @@ def assign_delivery_agent(request, pk):
                 )
                 send_mail(
                     subject=f"Update: Your CarHub Order #{str(order.id)[:8]} is Assigned",
-                    message=f"Hi {order.customer.username},\n\nYour order for {order.car.brand} {order.car.model} is now being processed. " # Assuming car.model is the display name
+                    message=f"Hi {order.customer.username},\n\nYour order for {order.car.brand} {order.car.get_model_display} is now being processed. "  # Assuming car.model is the display name
                             f"A delivery agent has been assigned to your order. We will notify you when it's out for delivery.",
                     from_email=settings.EMAIL_HOST_USER,
                     recipient_list=[order.customer.email],
                     fail_silently=False,
                 )
 
-                messages.success(request, f"Delivery Agent {agent.username} assigned to Order #{str(order.id)[:8]} successfully!")
+                messages.success(request,
+                                 f"Delivery Agent {agent.username} assigned to Order #{str(order.id)[:8]} successfully!")
                 return redirect('order-detail', pk=order.pk)
         else:
             messages.error(request, "Invalid form submission. Please select a valid agent.")
@@ -762,6 +875,7 @@ def assign_delivery_agent(request, pk):
     }
     return render(request, 'carhub/assign_delivery_agent.html', context)
 
+
 # --- Notification Views ---
 class EmailNotificationListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListView):
     """
@@ -770,7 +884,7 @@ class EmailNotificationListView(LoginRequiredMixin, UserPassesTestMixin, generic
     model = EmailNotification
     template_name = 'carhub/emailnotification_list.html'
     context_object_name = 'notifications'
-    paginate_by = 10
+    paginate_by = 25
 
     def get_queryset(self):
         user = self.request.user
@@ -811,13 +925,10 @@ class EmailNotificationDetailView(LoginRequiredMixin, UserPassesTestMixin, gener
 
 # --- Sales Report Views ---
 class SalesReportListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListView):
-    """
-    Lists sales reports (for Admins).
-    """
     model = SalesReport
     template_name = 'carhub/salesreport_list.html'
     context_object_name = 'sales_reports'
-    paginate_by = 10
+    paginate_by = 25
 
     def test_func(self):
         user = self.request.user
@@ -828,6 +939,31 @@ class SalesReportListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListV
     def handle_no_permission(self):
         messages.error(self.request, "You do not have permission to view sales reports.")
         return redirect('index')
+
+    def get_queryset(self):
+        # This queryset will be used for the main sales_reports table
+        # Order by sold_on in descending order for most recent first
+        return SalesReport.objects.select_related('order__customer', 'car').order_by('-sold_on')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # --- Dashboard/Summary Data ---
+        total_orders_count = Order.objects.count()
+        total_assigned_orders = Order.objects.filter(deliveryassignment__isnull=False).distinct().count()
+        total_unassigned_orders = total_orders_count - total_assigned_orders
+        total_sales_value = SalesReport.objects.aggregate(Sum('sale_price'))['sale_price__sum'] or 0.00
+        pending_assignment_orders_data = Order.objects.filter(
+            deliveryassignment__isnull=True
+        ).select_related('customer', 'car').order_by('created_at') # Order by creation date, oldest first
+
+        context['total_orders'] = total_orders_count
+        context['total_unassigned'] = total_unassigned_orders
+        context['total_assigned'] = total_assigned_orders
+        context['total_sales'] = f"{total_sales_value:,.2f}" # Format as currency
+        context['pending_assignment_orders'] = pending_assignment_orders_data
+
+        return context
 
 
 @login_required
@@ -881,4 +1017,28 @@ def mark_unavailable(request):
         messages.success(request, "Selected cars marked as unavailable.")
 
     return redirect('inventory')
+
+from django.shortcuts import render
+from .models import Order, SalesReport
+
+def dashboard_view(request):
+    total_orders = Order.objects.count()
+    unassigned_orders = Order.objects.filter(deliveryassignment__isnull=True)
+    total_unassigned = unassigned_orders.count()
+    total_assigned = total_orders - total_unassigned
+
+    total_sales = SalesReport.objects.count()
+    recent_sales = SalesReport.objects.order_by('-sold_on')[:5]  # Last 5 sales, newest first
+
+    context = {
+        'total_orders': total_orders,
+        'total_unassigned': total_unassigned,
+        'total_assigned': total_assigned,
+        'unassigned_orders': unassigned_orders,
+        'total_sales': total_sales,
+        'recent_sales': recent_sales,
+    }
+    return render(request, 'carhub/dashboard.html', context)
+
+
 

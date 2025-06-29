@@ -1,0 +1,26 @@
+brand,model_type,price,color,condition,available
+Toyota,SUV,35000.00,Black,New,True
+Honda,Sedan,22500.00,White,Used,True
+Ford,Pickup,45000.00,Red,New,False
+BMW,Sedan,55000.00,Blue,Used,True
+Mercedes-Benz,SUV,68000.00,Silver,New,True
+Audi,Sedan,48000.00,Black,Used,False
+Nissan,SUV,30000.00,Grey,New,True
+Hyundai,Sedan,20000.00,White,Used,True
+Kia,SUV,28000.00,Red,New,True
+Chevrolet,Pickup,42000.00,Blue,Used,False
+Subaru,SUV,33000.00,Green,New,True
+Volkswagen,Sedan,24000.00,Black,Used,True
+Mazda,SUV,29000.00,Red,New,False
+Tesla,Sedan,70000.00,White,New,True
+Jeep,SUV,38000.00,Grey,Used,True
+Volvo,Sedan,40000.00,Blue,New,True
+Ram,Pickup,50000.00,Black,Used,False
+GMC,Pickup,47000.00,White,New,True
+Lexus,SUV,60000.00,Silver,Used,True
+Porsche,Sedan,85000.00,Red,New,True
+Fiat,Sedan,18000.00,Yellow,Used,False
+Chrysler,Sedan,26000.00,Blue,New,True
+Acura,SUV,39000.00,Black,Used,True
+Mitsubishi,SUV,27000.00,White,New,True
+Land Rover,SUV,75000.00,Green,Used,False

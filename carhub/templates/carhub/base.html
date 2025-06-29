@@ -50,9 +50,8 @@
                         <li class="nav-item"><a class="nav-link" href="{% url 'inventory' %}"><strong>Inventory</strong></a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'order-list' %}"><strong>Orders</strong></a></li>
                     {% endif %}
-
                     {% if user|is_in_groups:"CarhubAdmin" %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'salesreport-list' %}"><strong>Sales Report</strong></a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'salesreport-list' %}"><strong>Sales</strong></a></li>
                     {% endif %}
                 {% endif %}
             </ul>
@@ -79,7 +78,7 @@
                     <form action="{% url 'logout' %}" method="post" class="d-inline"> {# d-inline to keep button on same line #}
                         {% csrf_token %}
                         {# Logout Button: Use btn-link to make it look like a link, and text-light for color #}
-                        <button type="submit" class="btn btn-link text-light">Log out</button>
+                        <button type="submit" class="btn btn-link text-light">Log Out</button>
                     </form>
                 </li>
             {% else %}

@@ -29,4 +29,6 @@ urlpatterns = [
     # Sales Reports
     path('sales/', views.SalesReportListView.as_view(), name='salesreport-list'),
     path('sales/export/csv/', views.export_sales_report_csv, name='export-sales-report-csv'), # Functional view
+
+    path('dashboard/', views.dashboard_view, name='dashboard'),
 ]

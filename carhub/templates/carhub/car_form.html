@@ -12,6 +12,17 @@
             </h5>
         </div>
         <div class="card-body py-3 px-4">
+            {# --- START: Added for messages display (important for CSV upload feedback) --- #}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show mb-3" role="alert">
+                        {{ message|safe }} {# Use 'safe' filter if messages contain HTML (like for CSV errors) #}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {# --- END: Added for messages display --- #}
+
             <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
 
@@ -35,15 +46,42 @@
                         <div class="form-check form-switch mb-3">
                             {{ field }}
                             <label class="form-check-label ms-2" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {# Add error display for 'available' field if applicable #}
+                            {% if field.errors %}
+                                <div class="text-danger small">{{ field.errors }}</div>
+                            {% endif %}
                         </div>
                     {% endif %}
                 {% endfor %}
 
-                <!-- ⬅️ Save/Cancel Buttons Aligned to Left -->
                 <div class="d-flex justify-content-start mt-3">
-                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="submit" name="single_car_submit" class="btn btn-success">Save Car</button>
                     <a href="{% url 'inventory' %}" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
+
+                {# --- START: CSV Bulk Upload Section --- #}
+                <hr class="my-4"> {# Visual separator #}
+
+                <h6 class="mb-3 text-center text-muted">OR Bulk Upload Cars via CSV</h6>
+                <p class="text-muted text-center small mb-3">
+                    Upload a CSV file to add multiple cars. Ensure your CSV has the exact headers (case-sensitive) and specific values for choices:<br>
+                    `brand,model_type,price,color,condition,available`<br>
+                    Example row: `Toyota,SUV,25000.00,Blue,25000.00,New,True`<br>
+                    For 'model_type', use: `Sedan`, `SUV`, `Pickup` (case-sensitive as per your model choices).<br>
+                    For 'condition', use: `New`, `Used` (case-sensitive as per your model choices).<br>
+                    For 'available', use: `True` or `False` (case-sensitive).
+                </p>
+
+                <div class="mb-3">
+                    <label for="csv_file" class="form-label">Select CSV File</label>
+                    <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv">
+                    <div class="form-text text-muted">Max file size: 5MB</div>
+                </div>
+
+                <div class="d-flex justify-content-start mt-3">
+                    <button type="submit" name="bulk_upload_submit" class="btn btn-primary">Upload CSV</button> {# ADDED name="bulk_upload_submit" #}
+                </div>
+                {# --- END: CSV Bulk Upload Section --- #}
             </form>
         </div>
     </div>
