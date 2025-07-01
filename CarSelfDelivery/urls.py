@@ -4,17 +4,17 @@ from django.urls import path, include, re_path
 from django.views.static import serve
 from django.conf import settings
 from django.contrib.auth import views as auth_views
-from carhub import views as carhub_views  # ✅ correctly importing carhub views
+from carhub import views as carhub_views
 
 urlpatterns = [
     # Home page
-    path('', carhub_views.home, name='home'),  # ✅ only one root path
+    path('', carhub_views.home, name='home'),
 
     # Admin panel
     path('admin/', admin.site.urls),
 
     # Carhub app
-    path('carhub/', include('carhub.urls')),  # ✅ dashboard route goes in carhub.urls
+    path('carhub/', include('carhub.urls')),
 
     # User registration
     path('register/', include('register.urls')),

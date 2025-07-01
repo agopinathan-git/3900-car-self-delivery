@@ -2,6 +2,7 @@
 
 import csv
 from decimal import Decimal
+from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib import messages
@@ -371,7 +372,7 @@ class CarCreateView(LoginRequiredMixin, UserPassesTestMixin, generic.CreateView)
             messages.error(request, f"Database error during bulk upload: {e}")
             messages.error(request, "No cars were added due to a database error.")
 
-        return redirect('inventory') # <-- Redirect after successful CSV upload
+        return redirect('inventory')  # <-- Redirect after successful CSV upload
 
     def form_valid(self, form):
         messages.success(self.request, f"Car {form.instance.brand} {form.instance.model} added successfully!")
@@ -640,33 +641,51 @@ def order_submit(request):
                     )
 
                 # Send confirmation email to customer
-                send_mail(
-                    subject="Your CarHub Order Confirmation",
-                    message=f"Hi {user.email}, your order for {len(orders_created)} car(s) has been placed successfully!",
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[user.email],
-                    fail_silently=False,
-                )
+                try:
+                    send_mail(
+                        subject="Your CarHub Order Confirmation",
+                        message=f"Hi {user.email}, your order for {len(orders_created)} car(s) has been placed successfully!",
+                        from_email=settings.EMAIL_HOST_USER,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except SMTPException as e:
+                    # Log the error but don't crash the user's request
+                    print(f"Error sending email for Order Confirmation: {e}")
+                    # You might want to log this to a file or Sentry/monitoring service
+                    # If DEBUG is True, this will print to your PythonAnywhere console log
+                    # If DEBUG is False, it will go to the error log.
+                    # Consider using Django's logging module for better logging practices.
+
+                    # Optionally, inform the user that the email *might* not have been sent
+                    # or have a fallback mechanism (e.g., store notification in DB).
+                    # You could also let the request proceed successfully
+                    # if email sending is not critical for the core functionality.
+                    pass  # Or a more robust fallback like sending a message to the user/admin
 
                 # Notify Admins
                 try:
                     admins_group = Group.objects.get(name='CarhubAdmin')
                     admins = admins_group.user_set.all()
                     for admin in admins:
-                        send_mail(
-                            subject="New Order Received - CarHub",
-                            message=f"Customer {user.email} placed an order for {len(orders_created)} car(s).",
-                            from_email=settings.EMAIL_HOST_USER,
-                            recipient_list=[admin.email],
-                            fail_silently=True,
-                        )
-                        # For admin notification:
-                        EmailNotification.objects.create(
-                            user=admin,
-                            subject="New Customer Order",
-                            notification_type='o',
-                            content=f"Order placed by {user.email}.",
-                        )
+                        try:
+                            send_mail(
+                                subject="New Order Received - CarHub",
+                                message=f"Customer {user.email} placed an order for {len(orders_created)} car(s).",
+                                from_email=settings.EMAIL_HOST_USER,
+                                recipient_list=[admin.email],
+                                fail_silently=True,
+                            )
+                        except SMTPException as e:
+                            print(f"Error sending email for New Order Received: {e}")
+                            pass  # Handle gracefully
+                    # For admin notification:
+                    EmailNotification.objects.create(
+                        user=admin,
+                        subject="New Customer Order",
+                        notification_type='o',
+                        content=f"Order placed by {user.email}.",
+                    )
                 except Group.DoesNotExist:
                     messages.warning(request, "Admin group not found for notifications.")
 
@@ -675,20 +694,24 @@ def order_submit(request):
                     agents_group = Group.objects.get(name='CarhubDeliveryAgent')
                     agents = agents_group.user_set.all()
                     for agent in agents:
-                        send_mail(
-                            subject="Delivery Request: New Car Order",
-                            message=f"A new car order is pending delivery assignment for customer {user.email}.",
-                            from_email=settings.EMAIL_HOST_USER,
-                            recipient_list=[agent.email],
-                            fail_silently=True,
-                        )
+                        try:
+                            send_mail(
+                                subject="Delivery Request: New Car Order",
+                                message=f"A new car order is pending delivery assignment for customer {user.email}.",
+                                from_email=settings.EMAIL_HOST_USER,
+                                recipient_list=[agent.email],
+                                fail_silently=True,
+                            )
+                        except SMTPException as e:
+                            print(f"Error sending email for New Car Order: {e}")
+                            pass  # Handle gracefully
                         # For delivery agent notification:
-                        EmailNotification.objects.create(
-                            user=agent,
-                            subject="New Delivery Needed",
-                            notification_type='d',
-                            content=f"Delivery needed for order(s) by {user.email}.",  # Changed to 'content'
-                        )
+                    EmailNotification.objects.create(
+                        user=agent,
+                        subject="New Delivery Needed",
+                        notification_type='d',
+                        content=f"Delivery needed for order(s) by {user.email}.",  # Changed to 'content'
+                    )
                 except Group.DoesNotExist:
                     messages.warning(request, "Delivery Agent group not found for notifications.")
 
@@ -735,8 +758,6 @@ class OrderUpdateView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateVie
         if 'pk' in self.kwargs:
             return redirect(reverse_lazy('order-detail', kwargs={'pk': self.kwargs['pk']}))
         return redirect(reverse_lazy('order-list'))
-
-    # Removed the incorrect id_short_version helper from here, as it's not used and caused confusion.
 
 
 # --- Delivery Assignment Views ---
@@ -836,14 +857,18 @@ def assign_delivery_agent(request, pk):
                     notification_type='d',
                     content=f"You have been assigned to deliver Order #{str(order.id)[:8]} for {order.customer.email}.",
                 )
-                send_mail(
-                    subject="New Delivery Assignment",
-                    message=f"Hi {agent.username},\n\nYou have been assigned to deliver Order #{str(order.id)[:8]} for customer {order.customer.username}. "
-                            f"Order details: {order.delivery_address}, Phone: {order.phone_number}",
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[agent.email],
-                    fail_silently=False,
-                )
+                try:
+                    send_mail(
+                        subject="New Delivery Assignment",
+                        message=f"Hi {agent.username},\n\nYou have been assigned to deliver Order #{str(order.id)[:8]} for customer {order.customer.username}. "
+                                f"Order details: {order.delivery_address}, Phone: {order.phone_number}",
+                        from_email=settings.EMAIL_HOST_USER,
+                        recipient_list=[agent.email],
+                        fail_silently=False,
+                    )
+                except SMTPException as e:
+                    print(f"Error sending email for New Delivery Assignment: {e}")
+                    pass  # Handle gracefully
 
                 # Notify the Customer about the assignment
                 EmailNotification.objects.create(
@@ -852,14 +877,18 @@ def assign_delivery_agent(request, pk):
                     notification_type='o',
                     content=f"Your order #{str(order.id)[:8]} is now being processed and assigned to a delivery agent.",
                 )
-                send_mail(
-                    subject=f"Update: Your CarHub Order #{str(order.id)[:8]} is Assigned",
-                    message=f"Hi {order.customer.username},\n\nYour order for {order.car.brand} {order.car.get_model_display} is now being processed. "  # Assuming car.model is the display name
-                            f"A delivery agent has been assigned to your order. We will notify you when it's out for delivery.",
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[order.customer.email],
-                    fail_silently=False,
-                )
+                try:
+                    send_mail(
+                        subject=f"Update: Your CarHub Order #{str(order.id)[:8]} is Assigned",
+                        message=f"Hi {order.customer.username},\n\nYour order for {order.car.brand} is now being processed. "
+                                f"A delivery agent has been assigned to your order. We will notify you when it's out for delivery.",
+                        from_email=settings.EMAIL_HOST_USER,
+                        recipient_list=[order.customer.email],
+                        fail_silently=False,
+                    )
+                except SMTPException as e:
+                    print(f"Error sending email for CarHub Order Assigned: {e}")
+                    pass  # Handle gracefully
 
                 messages.success(request,
                                  f"Delivery Agent {agent.username} assigned to Order #{str(order.id)[:8]} successfully!")
@@ -955,12 +984,12 @@ class SalesReportListView(LoginRequiredMixin, UserPassesTestMixin, generic.ListV
         total_sales_value = SalesReport.objects.aggregate(Sum('sale_price'))['sale_price__sum'] or 0.00
         pending_assignment_orders_data = Order.objects.filter(
             deliveryassignment__isnull=True
-        ).select_related('customer', 'car').order_by('created_at') # Order by creation date, oldest first
+        ).select_related('customer', 'car').order_by('created_at')  # Order by creation date, oldest first
 
         context['total_orders'] = total_orders_count
         context['total_unassigned'] = total_unassigned_orders
         context['total_assigned'] = total_assigned_orders
-        context['total_sales'] = f"{total_sales_value:,.2f}" # Format as currency
+        context['total_sales'] = f"{total_sales_value:,.2f}"  # Format as currency
         context['pending_assignment_orders'] = pending_assignment_orders_data
 
         return context
@@ -1018,8 +1047,10 @@ def mark_unavailable(request):
 
     return redirect('inventory')
 
+
 from django.shortcuts import render
 from .models import Order, SalesReport
+
 
 def dashboard_view(request):
     total_orders = Order.objects.count()
@@ -1039,6 +1070,3 @@ def dashboard_view(request):
         'recent_sales': recent_sales,
     }
     return render(request, 'carhub/dashboard.html', context)
-
-
-
